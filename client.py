@@ -42,9 +42,12 @@ class OpenAIClient:
     async def _ensure_client(self) -> httpx.AsyncClient:
         """Create client if it doesn't exist."""
         if self._client is None:
+            headers = {}
+            if self.api_key:
+                headers["Authorization"] = f"Bearer {self.api_key}"
             self._client = httpx.AsyncClient(
                 base_url=self.base_url,
-                headers={"Authorization": f"Bearer {self.api_key}"},
+                headers=headers,
                 timeout=self.timeout,
             )
         return self._client
