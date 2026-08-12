@@ -1,0 +1,12 @@
+# Example configuration file for AI Web Harness
+# Copy this to config.yaml and fill in your values
+
+openai:
+  api_key: "your-openai-api-key-here"
+  base_url: "https://api.openai.com/v1"
+
+model_name: "gpt-4o-mini"
+
+server:
+  host: "0.0.0.0"
+  port: 8000
