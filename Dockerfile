@@ -20,12 +20,8 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Copy installed packages from builder
-COPY --from=builder /root/.local /root/.local
-COPY --from=builder /app /app
-
-# Ensure scripts in .local are usable
-ENV PATH=/root/.local/bin:$PATH
+# Copy installed packages from builder to a shared location
+COPY --from=builder /root/.local /usr/local
 
 # Copy application code
 COPY . .
