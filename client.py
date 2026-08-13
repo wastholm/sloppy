@@ -45,6 +45,14 @@ class OpenAIClient:
             headers = {}
             if self.api_key:
                 headers["Authorization"] = f"Bearer {self.api_key}"
+            
+            # Debug logging
+            logger.debug("OpenAIClient config:")
+            logger.debug("  base_url: %s", self.base_url)
+            logger.debug("  api_key: %s", "**REDACTED**" if self.api_key else "(empty)")
+            logger.debug("  headers: %s", headers)
+            logger.debug("  model_name: %s", self.model_name)
+            
             self._client = httpx.AsyncClient(
                 base_url=self.base_url,
                 headers=headers,
@@ -93,7 +101,11 @@ class OpenAIClient:
         client = await self._ensure_client()
         
         try:
+            logger.debug("Sending POST request to: %s/chat/completions", self.base_url)
+            logger.debug("Request body: %s", request_body)
             response = await client.post("/chat/completions", json=request_body)
+            logger.debug("Response status: %s", response.status_code)
+            logger.debug("Response headers: %s", dict(response.headers))
             response.raise_for_status()
             data = response.json()
             

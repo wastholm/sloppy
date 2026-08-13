@@ -10,6 +10,7 @@ Usage:
 
 import argparse
 import logging
+import os
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
@@ -22,8 +23,9 @@ from config import get_config, update_config_from_cli
 logger = logging.getLogger(__name__)
 
 # Configure logging
+log_level = logging.DEBUG if os.environ.get("DEBUG", "").lower() in ("1", "true", "yes") else logging.INFO
 logging.basicConfig(
-    level=logging.INFO,
+    level=log_level,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 
