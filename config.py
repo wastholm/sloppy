@@ -45,6 +45,11 @@ class AppConfig(BaseSettings):
         alias="PORT",
         description="Server port"
     )
+    timeout: float = Field(
+        default=30.0,
+        alias="TIMEOUT",
+        description="Request timeout in seconds"
+    )
 
     @field_validator('openai_base_url')
     @classmethod
@@ -78,6 +83,11 @@ class AppConfig(BaseSettings):
             port: int = self.port
         return ServerConfig(host=self.host, port=self.port)
 
+    @property
+    def client_timeout(self) -> float:
+        """Get the client timeout."""
+        return self.timeout
+
 
 # Global config instance - lazy loaded to avoid issues when api_key not set
 _config: Optional[AppConfig] = None
@@ -103,6 +113,7 @@ def update_config_from_cli(
     model_name: Optional[str] = None,
     host: Optional[str] = None,
     port: Optional[int] = None,
+    timeout: Optional[float] = None,
 ) -> None:
     """Update configuration from CLI arguments."""
     cfg = get_config()
@@ -116,3 +127,5 @@ def update_config_from_cli(
         cfg.host = host
     if port:
         cfg.port = port
+    if timeout is not None:
+        cfg.timeout = timeout

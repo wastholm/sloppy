@@ -90,6 +90,67 @@ async def generate_search_page(request: Request) -> HTMLResponse:
         return HTMLResponse(content=error_html, status_code=500)
 
 
+@app.get("/web", response_class=HTMLResponse)
+async def search(request: Request) -> HTMLResponse:
+    """
+    Generate a search results page for the given query.
+    
+    Takes a 'q' query parameter containing the user's search query.
+    Returns a page with relevant search results, each having a title and summary.
+    
+    Returns:
+        HTMLResponse with the generated search results page.
+    """
+    query = request.query_params.get("q", "")
+    if not query:
+        error_html = """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>No Query - Sloppy</title>
+            <style>
+                body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+                h1 { color: #d32f2f; }
+                p { color: #666; }
+            </style>
+        </head>
+        <body>
+            <h1>No search query provided</h1>
+            <p>Please enter a search term.</p>
+        </body>
+        </html>
+        """
+        return HTMLResponse(content=error_html, status_code=400)
+    
+    try:
+        async with OpenAIClient() as client:
+            html_content = await client.generate_search_results_page(query)
+            return HTMLResponse(content=html_content, status_code=200)
+    except Exception as e:
+        logger.error(f"Failed to generate search results: {e}")
+        error_html = """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Error - Sloppy</title>
+            <style>
+                body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+                h1 { color: #d32f2f; }
+                p { color: #666; }
+                .error { background: #ffebee; padding: 20px; border-radius: 5px; display: inline-block; }
+            </style>
+        </head>
+        <body>
+            <div class="error">
+                <h1>Error Generating Results</h1>
+                <p>Sorry, Sloppy couldn't generate search results. Please check the server logs.</p>
+            </div>
+        </body>
+        </html>
+        """
+        return HTMLResponse(content=error_html, status_code=500)
+
+
 @app.get("/health")
 async def health_check() -> dict[str, str]:
     """
@@ -132,6 +193,11 @@ def parse_args() -> argparse.Namespace:
         type=int,
         help="Server port (overrides env/config)",
     )
+    parser.add_argument(
+        "--timeout",
+        type=float,
+        help="Request timeout in seconds (overrides env/config)",
+    )
     return parser.parse_args()
 
 
@@ -145,6 +211,7 @@ if __name__ == "__main__":
         model_name=args.model_name,
         host=args.host,
         port=args.port,
+        timeout=args.timeout,
     )
     
     # Run the server

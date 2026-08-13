@@ -21,13 +21,13 @@ class OpenAIClient:
         api_key: Optional[str] = None,
         base_url: Optional[str] = None,
         model_name: Optional[str] = None,
-        timeout: float = 30.0,
+        timeout: Optional[float] = None,
     ):
         cfg = get_config()
         self.api_key = api_key or cfg.openai.api_key
         self.base_url = base_url or cfg.openai.base_url
         self.model_name = model_name or cfg.model_name
-        self.timeout = timeout
+        self.timeout = timeout if timeout is not None else cfg.timeout
         self._client: Optional[httpx.AsyncClient] = None
 
     async def __aenter__(self) -> "OpenAIClient":
@@ -60,6 +60,79 @@ class OpenAIClient:
             )
         return self._client
 
+    async def generate_search_results_page(self, query: str, system_prompt: Optional[str] = None) -> str:
+        """
+        Generate a search results page HTML for a given query.
+        
+        Args:
+            query: The search query from the user
+            system_prompt: Optional custom system prompt
+            
+        Returns:
+            Complete HTML string for a search results page.
+        """
+        results_system_prompt = (
+            "You are a search results generator. "
+            "Generate a complete HTML page showing search results for the query: "
+            f"'{query}'. "
+            "The page should have:"
+            " - A title tag mentioning 'Sloppy' and the query"
+            " - A heading showing the query"
+            " - A list of 5-10 relevant search results"
+            " - Each result must have a clear title (as a link) and a short summary paragraph"
+            f" - Each link must use the format: href='/web/{{id}}?q={query}' "
+            "where {{id}} is a short unique identifier for the result "
+            f"(e.g., '/web/result1?q={query}', '/web/python-docs?q={query}')"
+            " - Results should be genuinely relevant to the query"
+            " - Clean, readable layout"
+            " - No external dependencies (inline CSS only)"
+            " - Proper HTML5 doctype"
+            "Return ONLY the complete HTML, no markdown, no code blocks, no explanations."
+        )
+        
+        prompt = system_prompt or results_system_prompt
+        
+        request_body = {
+            "model": self.model_name,
+            "messages": [
+                {"role": "system", "content": prompt},
+                {"role": "user", "content": f"Generate search results for: {query}"},
+            ],
+            "temperature": 0.7,
+            "max_tokens": 2000,
+        }
+
+        client = await self._ensure_client()
+        
+        try:
+            logger.debug("Sending POST request for search results to: %s/chat/completions", self.base_url)
+            logger.debug("Request body: %s", request_body)
+            response = await client.post("/chat/completions", json=request_body)
+            logger.debug("Response status: %s", response.status_code)
+            logger.debug("Response headers: %s", dict(response.headers))
+            response.raise_for_status()
+            data = response.json()
+            
+            if data.get("choices") and len(data["choices"]) > 0:
+                content = data["choices"][0].get("message", {}).get("content", "")
+                if content:
+                    content = content.strip()
+                    if content.startswith("```html"):
+                        content = content[7:]
+                    if content.startswith("```"):
+                        content = content[3:]
+                    if content.endswith("```"):
+                        content = content[:-3]
+                    content = content.strip()
+                    return content
+            
+            logger.error("Unexpected response format: %s", data)
+            raise ValueError("Unexpected response format from API")
+            
+        except httpx.HTTPStatusError as e:
+            logger.error("API request failed: %s", e)
+            raise
+
     async def generate_search_page(self, system_prompt: Optional[str] = None) -> str:
         """
         Generate a complete search page HTML using the configured model.
@@ -78,10 +151,12 @@ class OpenAIClient:
             "Generate a complete, simple search page HTML like Google or DuckDuckGo. "
             "The page should have:"
             " - A clean, minimal design with a centered search box"
-            " - A search button or allow pressing Enter"
+            " - A title tag that includes the word 'Sloppy'"
+            " - A GET form with action='/web' and method='GET'"
+            " - Two submit buttons: one labeled 'Search' and one labeled "
+            "'I\'m Feeling Sloppy'"
             " - Responsive layout that works on mobile and desktop"
             " - No external dependencies (inline CSS only)"
-            " - A title tag"
             " - Proper HTML5 doctype"
             "Return ONLY the complete HTML, no markdown, no code blocks, no explanations."
         )
