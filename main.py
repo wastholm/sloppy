@@ -90,6 +90,48 @@ async def generate_search_page(request: Request) -> HTMLResponse:
         return HTMLResponse(content=error_html, status_code=500)
 
 
+@app.get("/web/{id}", response_class=HTMLResponse)
+async def web_page(id: str, request: Request) -> HTMLResponse:
+    """
+    Generate a web page for a specific site/organization hint.
+    
+    Takes:
+    - id: Path parameter hinting at site type (e.g., 'wikipedia', 'github', 'news')
+    - q: Query parameter to influence page contents
+    
+    Returns a page matching the site type and query, with dummy placeholder images.
+    """
+    query = request.query_params.get("q", "")
+    
+    try:
+        async with OpenAIClient() as client:
+            html_content = await client.generate_web_page(id, query)
+            return HTMLResponse(content=html_content, status_code=200)
+    except Exception as e:
+        logger.error(f"Failed to generate web page for id={id}, q={query}: {e}")
+        error_html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Error - Sloppy</title>
+            <style>
+                body {{ font-family: Arial, sans-serif; text-align: center; padding: 50px; }}
+                h1 {{ color: #d32f2f; }}
+                p {{ color: #666; }}
+                .error {{ background: #ffebee; padding: 20px; border-radius: 5px; display: inline-block; }}
+            </style>
+        </head>
+        <body>
+            <div class="error">
+                <h1>Error Generating Page</h1>
+                <p>Sorry, Sloppy couldn't generate the page for {id}. Please check the server logs.</p>
+            </div>
+        </body>
+        </html>
+        """
+        return HTMLResponse(content=error_html, status_code=500)
+
+
 @app.get("/web", response_class=HTMLResponse)
 async def search(request: Request) -> HTMLResponse:
     """

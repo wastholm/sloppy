@@ -133,6 +133,75 @@ class OpenAIClient:
             logger.error("API request failed: %s", e)
             raise
 
+    async def generate_web_page(self, id: str, query: str, system_prompt: Optional[str] = None) -> str:
+        """
+        Generate a web page for a specific site hint and query.
+        
+        Args:
+            id: Site/organization hint (e.g., 'wikipedia', 'github', 'news')
+            query: The search query to influence page contents
+            system_prompt: Optional custom system prompt
+            
+        Returns:
+            Complete HTML string for a web page.
+        """
+        page_system_prompt = (
+            "You are a web page generator. "
+            f"Generate a complete HTML page for a site of type '{id}' related to the query '{query}'. "
+            "The page should have:"
+            " - A title tag mentioning the site type and query"
+            " - Content relevant to both the site type and the query"
+            " - If images are needed, use dummy placeholder images (e.g., 200x200 gray rectangles)"
+            " - Clean, readable layout with proper structure"
+            " - No external dependencies or real URLs (all links should be placeholders)"
+            " - No functional JavaScript"
+            " - Proper HTML5 doctype"
+            "Return ONLY the complete HTML, no markdown, no code blocks, no explanations."
+        )
+        
+        prompt = system_prompt or page_system_prompt
+        
+        request_body = {
+            "model": self.model_name,
+            "messages": [
+                {"role": "system", "content": prompt},
+                {"role": "user", "content": f"Generate a {id} page about: {query}"},
+            ],
+            "temperature": 0.7,
+            "max_tokens": 2000,
+        }
+
+        client = await self._ensure_client()
+        
+        try:
+            logger.debug("Sending POST request for web page (id=%s, q=%s) to: %s/chat/completions", id, query, self.base_url)
+            logger.debug("Request body: %s", request_body)
+            response = await client.post("/chat/completions", json=request_body)
+            logger.debug("Response status: %s", response.status_code)
+            logger.debug("Response headers: %s", dict(response.headers))
+            response.raise_for_status()
+            data = response.json()
+            
+            if data.get("choices") and len(data["choices"]) > 0:
+                content = data["choices"][0].get("message", {}).get("content", "")
+                if content:
+                    content = content.strip()
+                    if content.startswith("```html"):
+                        content = content[7:]
+                    if content.startswith("```"):
+                        content = content[3:]
+                    if content.endswith("```"):
+                        content = content[:-3]
+                    content = content.strip()
+                    return content
+            
+            logger.error("Unexpected response format: %s", data)
+            raise ValueError("Unexpected response format from API")
+            
+        except httpx.HTTPStatusError as e:
+            logger.error("API request failed: %s", e)
+            raise
+
     async def generate_search_page(self, system_prompt: Optional[str] = None) -> str:
         """
         Generate a complete search page HTML using the configured model.
