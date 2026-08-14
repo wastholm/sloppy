@@ -62,6 +62,8 @@ The server can be configured via:
 ## API Endpoints
 
 - `GET /` - Generate and serve a search page
+- `GET /web?q={query}` - Generate a search results page for the given query
+- `GET /web/{domain}/{title}?q={query}` - Generate an individual result page where `{domain}` is a domain name (e.g., `en.wikipedia.org`), `{title}` is the page title (URL-encoded, may contain slashes), and `{query}` is the search query
 - `GET /health` - Health check endpoint
 
 ## Project Structure
