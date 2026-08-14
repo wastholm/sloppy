@@ -74,15 +74,15 @@ class OpenAIClient:
         results_system_prompt = (
             "You are a search results generator. "
             "Generate a complete HTML page showing search results for the query: "
-            f"'{query}'. "
+            "'{query}'. "
             "The page should have:"
             " - A title tag mentioning 'Sloppy' and the query"
             " - A heading showing the query"
             " - A list of 5-10 relevant search results"
             " - Each result must have a clear title (as a link) and a short summary paragraph"
-            f" - Each link must use the format: href='/web/{{id}}?q={query}' "
-            "where {{id}} is a short unique identifier for the result "
-            f"(e.g., '/web/result1?q={query}', '/web/python-docs?q={query}')"
+            " - Each result must be associated with a plausible domain name like 'reddit.com' or 'en.wikipedia.org'"
+            " - Each link must use the format: href='/web/{domain}/{title}?q={query}' "
+            "where {domain} is the plausible domain name, {title} is the title of the result (URL-encoded), and {query} is the search query (URL-encoded)"
             " - Results should be genuinely relevant to the query"
             " - Clean, readable layout"
             " - No external dependencies (inline CSS only)"
@@ -133,13 +133,14 @@ class OpenAIClient:
             logger.error("API request failed: %s", e)
             raise
 
-    async def generate_web_page(self, id: str, query: str, system_prompt: Optional[str] = None) -> str:
+    async def generate_web_page(self, domain: str, query: str, title: str = "", system_prompt: Optional[str] = None) -> str:
         """
-        Generate a web page for a specific site hint and query.
+        Generate a web page for a specific domain, title, and query.
         
         Args:
-            id: Site/organization hint (e.g., 'wikipedia', 'github', 'news')
+            domain: The domain (e.g., 'reddit.com', 'en.wikipedia.org')
             query: The search query to influence page contents
+            title: The title of the page
             system_prompt: Optional custom system prompt
             
         Returns:
@@ -147,10 +148,10 @@ class OpenAIClient:
         """
         page_system_prompt = (
             "You are a web page generator. "
-            f"Generate a complete HTML page for a site of type '{id}' related to the query '{query}'. "
+            f"Generate a complete HTML page for domain '{domain}' with title '{title}' related to the query '{query}'. "
             "The page should have:"
-            " - A title tag mentioning the site type and query"
-            " - Content relevant to both the site type and the query"
+            " - A title tag mentioning the domain and title"
+            " - Content relevant to the domain, title, and query"
             " - If images are needed, use dummy placeholder images (e.g., 200x200 gray rectangles)"
             " - Clean, readable layout with proper structure"
             " - No external dependencies or real URLs (all links should be placeholders)"
@@ -165,7 +166,7 @@ class OpenAIClient:
             "model": self.model_name,
             "messages": [
                 {"role": "system", "content": prompt},
-                {"role": "user", "content": f"Generate a {id} page about: {query}"},
+                {"role": "user", "content": f"Generate a page for domain '{domain}' with title '{title}' about: {query}"},
             ],
             "temperature": 0.7,
             "max_tokens": 2000,
