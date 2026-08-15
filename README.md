@@ -37,6 +37,7 @@ The server can be configured via:
    - `HOST` - Server host (default: `0.0.0.0`)
    - `STREAM` - Enable streaming responses for progressive page loading (default: `false`)
    - `TIMEOUT` - Request timeout in seconds (default: `30.0`)
+   - `COMFYUI_URL` - ComfyUI server URL for AI image generation (default: `http://localhost:8188`)
 
 2. **Config file** (`config.yaml`):
    ```yaml
@@ -49,11 +50,12 @@ The server can be configured via:
      port: 8000
    stream: false
    timeout: 30.0
+   comfyui_url: http://localhost:8188
    ```
 
 3. **CLI arguments** (lowest priority):
    ```bash
-   python main.py --api-key your_key --base-url https://api.openai.com/v1 --model gpt-4o-mini --stream
+   python main.py --api-key your_key --base-url https://api.openai.com/v1 --model gpt-4o-mini --stream --comfyui-url http://localhost:8188
    ```
 
 ## Usage
@@ -68,6 +70,7 @@ The server can be configured via:
 - `GET /` - Generate and serve a search page
 - `GET /web?q={query}` - Generate a search results page for the given query
 - `GET /web/{domain}/{title}?q={query}` - Generate an individual result page where `{domain}` is a domain name (e.g., `en.wikipedia.org`), `{title}` is the page title (URL-encoded, may contain slashes), and `{query}` is the search query
+- `GET /img?t={text}&w={width}&h={height}` - Generate an image using ComfyUI (falls back to SVG placeholder if ComfyUI is unavailable)
 - `GET /health` - Health check endpoint
 
 ## Project Structure

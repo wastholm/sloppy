@@ -10,6 +10,7 @@ Environment variables:
 - PORT: Server port (default: 8000)
 - STREAM: Enable streaming responses for progressive page loading (default: false)
 - TIMEOUT: Request timeout in seconds (default: 30.0)
+- COMFYUI_URL: ComfyUI server URL for image generation (default: http://localhost:8188)
 """
 
 import os
@@ -56,6 +57,11 @@ class AppConfig(BaseSettings):
         default=False,
         alias="STREAM",
         description="Enable streaming responses for progressive page loading"
+    )
+    comfyui_url: str = Field(
+        default="http://localhost:8188",
+        alias="COMFYUI_URL",
+        description="ComfyUI server URL for image generation"
     )
 
     @field_validator('openai_base_url')
@@ -122,6 +128,7 @@ def update_config_from_cli(
     port: Optional[int] = None,
     timeout: Optional[float] = None,
     stream: Optional[bool] = None,
+    comfyui_url: Optional[str] = None,
 ) -> None:
     """Update configuration from CLI arguments."""
     cfg = get_config()
@@ -139,3 +146,5 @@ def update_config_from_cli(
         cfg.timeout = timeout
     if stream is not None:
         cfg.stream = stream
+    if comfyui_url:
+        cfg.comfyui_url = comfyui_url.rstrip('/')
