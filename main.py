@@ -12,7 +12,7 @@ import argparse
 import logging
 import os
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
+from typing import Any, AsyncGenerator
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, StreamingResponse
@@ -53,18 +53,54 @@ app = FastAPI(
 )
 
 
-@app.get("/", response_class=HTMLResponse)
-async def generate_search_page(request: Request) -> HTMLResponse:
+async def _html_response(
+    client: OpenAIClient,
+    stream_func: str,
+    non_stream_func: str,
+    *args: Any,
+    **kwargs: Any,
+) -> StreamingResponse | HTMLResponse:
+    """
+    Common helper to return either StreamingResponse or HTMLResponse based on config.
+    
+    Args:
+        client: OpenAIClient instance
+        stream_func: Method name for streaming (e.g., 'stream_search_page')
+        non_stream_func: Method name for non-streaming (e.g., 'generate_search_page')
+        *args: Arguments to pass to the methods
+        **kwargs: Keyword arguments to pass to the methods
+    
+    Returns:
+        StreamingResponse if STREAM=true, otherwise HTMLResponse
+    """
+    cfg = get_config()
+    if cfg.stream:
+        stream_method = getattr(client, stream_func)
+        async def generate():
+            async for chunk in stream_method(*args, **kwargs):
+                yield chunk
+        return StreamingResponse(generate(), media_type="text/html")
+    else:
+        non_stream_method = getattr(client, non_stream_func)
+        content = await non_stream_method(*args, **kwargs)
+        return HTMLResponse(content=content, status_code=200)
+
+
+@app.get("/")
+async def generate_search_page(request: Request):
     """
     Generate a complete search page using the configured AI model.
     
     Returns:
-        HTMLResponse with the generated search page.
+        HTMLResponse or StreamingResponse with the generated search page.
     """
     try:
         async with OpenAIClient() as client:
-            html_content = await client.generate_search_page()
-            return HTMLResponse(content=html_content, status_code=200)
+            return await _html_response(
+                client,
+                "stream_search_page",
+                "generate_search_page",
+            )
     except Exception as e:
         logger.error(f"Failed to generate search page: {e}")
         error_html = """
@@ -104,20 +140,17 @@ async def web_page(domain: str, title: str, request: Request):
     If STREAM=true is set, the page loads progressively.
     """
     query = request.query_params.get("q", "")
-    cfg = get_config()
     
     try:
         async with OpenAIClient() as client:
-            if cfg.stream:
-                # Stream the response progressively
-                async def generate():
-                    async for chunk in client.stream_web_page(domain, query, title):
-                        yield chunk
-                return StreamingResponse(generate(), media_type="text/html")
-            else:
-                # Non-streaming: wait for complete response
-                html_content = await client.generate_web_page(domain, query, title)
-                return HTMLResponse(content=html_content, status_code=200)
+            return await _html_response(
+                client,
+                "stream_web_page",
+                "generate_web_page",
+                domain,
+                query,
+                title,
+            )
     except Exception as e:
         logger.error(f"Failed to generate web page for domain={domain}, title={title}, q={query}: {e}")
         error_html = f"""
@@ -143,8 +176,8 @@ async def web_page(domain: str, title: str, request: Request):
         return HTMLResponse(content=error_html, status_code=500)
 
 
-@app.get("/web", response_class=HTMLResponse)
-async def search(request: Request) -> HTMLResponse:
+@app.get("/web")
+async def search(request: Request):
     """
     Generate a search results page for the given query.
     
@@ -152,7 +185,7 @@ async def search(request: Request) -> HTMLResponse:
     Returns a page with relevant search results, each having a title and summary.
     
     Returns:
-        HTMLResponse with the generated search results page.
+        HTMLResponse or StreamingResponse with the generated search results page.
     """
     query = request.query_params.get("q", "")
     if not query:
@@ -177,8 +210,12 @@ async def search(request: Request) -> HTMLResponse:
     
     try:
         async with OpenAIClient() as client:
-            html_content = await client.generate_search_results_page(query)
-            return HTMLResponse(content=html_content, status_code=200)
+            return await _html_response(
+                client,
+                "stream_search_results_page",
+                "generate_search_results_page",
+                query,
+            )
     except Exception as e:
         logger.error(f"Failed to generate search results: {e}")
         error_html = """

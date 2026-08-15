@@ -404,6 +404,83 @@ class OpenAIClient:
             logger.error("API request failed: %s", e)
             raise
 
+    async def stream_search_results_page(
+        self, query: str, system_prompt: Optional[str] = None
+    ) -> AsyncGenerator[str, None]:
+        """
+        Stream a search results page HTML for a given query.
+        
+        Args:
+            query: The search query from the user
+            system_prompt: Optional custom system prompt
+            
+        Yields:
+            Chunks of HTML content as they are streamed from the API.
+        """
+        results_system_prompt = (
+            "You are a search results generator. "
+            "Generate a complete HTML page showing search results for the query: "
+            f"'{query}'. "
+            "The page should have:"
+            " - A title tag mentioning 'Sloppy' and the query"
+            " - A heading showing the query"
+            " - A list of 5-10 relevant search results"
+            " - Each result must have a clear title (as a link) and a short summary paragraph"
+            " - Each result must be associated with a plausible domain name like 'reddit.com' or 'en.wikipedia.org'"
+            f" - Each link must use the format: href='/web/{{domain}}/{{title}}?q={query}' "
+            "where {domain} is the plausible domain name and {title} is the title of the result (URL-encoded)"
+            " - Results should be genuinely relevant to the query"
+            " - Clean, readable layout"
+            " - No external dependencies (inline CSS only)"
+            " - Proper HTML5 doctype"
+            "Return ONLY the complete HTML, no markdown, no code blocks, no explanations."
+        )
+        
+        prompt = system_prompt or results_system_prompt
+        
+        messages = [
+            {"role": "system", "content": prompt},
+            {"role": "user", "content": f"Generate search results for: {query}"},
+        ]
+        
+        async for chunk in self._stream_completion(messages, temperature=0.7, max_tokens=MAX_TOKENS):
+            yield chunk
+
+    async def stream_search_page(self, system_prompt: Optional[str] = None) -> AsyncGenerator[str, None]:
+        """
+        Stream a complete search page HTML.
+        
+        Args:
+            system_prompt: Optional custom system prompt
+            
+        Yields:
+            Chunks of HTML content as they are streamed from the API.
+        """
+        default_system_prompt = (
+            "You are a web page generator. "
+            "Generate a complete, simple search page HTML like Google or DuckDuckGo. "
+            "The page should have:"
+            " - A clean, minimal design with a centered search box"
+            " - A title tag that includes the word 'Sloppy'"
+            " - A GET form with action='/web' and method='GET'"
+            " - Two submit buttons: one labeled 'Search' and one labeled "
+            "'I\'m Feeling Sloppy'"
+            " - Responsive layout that works on mobile and desktop"
+            " - No external dependencies (inline CSS only)"
+            " - Proper HTML5 doctype"
+            "Return ONLY the complete HTML, no markdown, no code blocks, no explanations."
+        )
+        
+        prompt = system_prompt or default_system_prompt
+        
+        messages = [
+            {"role": "system", "content": prompt},
+            {"role": "user", "content": "Generate a simple search page HTML."},
+        ]
+        
+        async for chunk in self._stream_completion(messages, temperature=0.7, max_tokens=MAX_TOKENS):
+            yield chunk
+
     async def close(self) -> None:
         """Close the underlying HTTP client."""
         if self._client:
