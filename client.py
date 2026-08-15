@@ -12,6 +12,7 @@ from config import get_config
 
 logger = logging.getLogger(__name__)
 
+MAX_TOKENS = 4000
 
 class OpenAIClient:
     """Async client for OpenAI-compatible APIs."""
@@ -99,7 +100,7 @@ class OpenAIClient:
                 {"role": "user", "content": f"Generate search results for: {query}"},
             ],
             "temperature": 0.7,
-            "max_tokens": 2000,
+            "max_tokens": MAX_TOKENS,
         }
 
         client = await self._ensure_client()
@@ -152,7 +153,9 @@ class OpenAIClient:
             "The page should have:"
             " - A title tag mentioning the domain and title"
             " - Content relevant to the domain, title, and query"
-            " - If images are needed, use dummy placeholder images (e.g., 200x200 gray rectangles)"
+            " - If images are needed, use dummy placeholder images with descriptive alt text. "
+            "Each image must have src='/img?t={alt_text}&w={width}&h={height}' "
+            "where {alt_text} is the alt text (URL-encoded), {width} is the width in pixels, and {height} is the height in pixels"
             " - Clean, readable layout with proper structure"
             " - All links must use the format href='/web/{{domain}}/{{link_title}}' "
             "where {domain} is the current domain and {link_title} is derived from the link text "
@@ -172,7 +175,7 @@ class OpenAIClient:
                 {"role": "user", "content": f"Generate a page for domain '{domain}' with title '{title}' about: {query}"},
             ],
             "temperature": 0.7,
-            "max_tokens": 2000,
+            "max_tokens": MAX_TOKENS,
         }
 
         client = await self._ensure_client()
@@ -243,7 +246,7 @@ class OpenAIClient:
                 {"role": "user", "content": "Generate a simple search page HTML."},
             ],
             "temperature": 0.7,
-            "max_tokens": 2000,
+            "max_tokens": MAX_TOKENS,
         }
 
         client = await self._ensure_client()
