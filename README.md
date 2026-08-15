@@ -35,6 +35,8 @@ The server can be configured via:
    - `MODEL_NAME` - Model to use (default: `gpt-4o-mini`)
    - `PORT` - Server port (default: `8000`)
    - `HOST` - Server host (default: `0.0.0.0`)
+   - `STREAM` - Enable streaming responses for progressive page loading (default: `false`)
+   - `TIMEOUT` - Request timeout in seconds (default: `30.0`)
 
 2. **Config file** (`config.yaml`):
    ```yaml
@@ -45,11 +47,13 @@ The server can be configured via:
    server:
      host: 0.0.0.0
      port: 8000
+   stream: false
+   timeout: 30.0
    ```
 
 3. **CLI arguments** (lowest priority):
    ```bash
-   python main.py --api-key your_key --base-url https://api.openai.com/v1 --model gpt-4o-mini
+   python main.py --api-key your_key --base-url https://api.openai.com/v1 --model gpt-4o-mini --stream
    ```
 
 ## Usage

@@ -8,6 +8,8 @@ Environment variables:
 - MODEL_NAME: Model to use (default: gpt-4o-mini)
 - HOST: Server host (default: 0.0.0.0)
 - PORT: Server port (default: 8000)
+- STREAM: Enable streaming responses for progressive page loading (default: false)
+- TIMEOUT: Request timeout in seconds (default: 30.0)
 """
 
 import os
@@ -49,6 +51,11 @@ class AppConfig(BaseSettings):
         default=30.0,
         alias="TIMEOUT",
         description="Request timeout in seconds"
+    )
+    stream: bool = Field(
+        default=False,
+        alias="STREAM",
+        description="Enable streaming responses for progressive page loading"
     )
 
     @field_validator('openai_base_url')
@@ -114,6 +121,7 @@ def update_config_from_cli(
     host: Optional[str] = None,
     port: Optional[int] = None,
     timeout: Optional[float] = None,
+    stream: Optional[bool] = None,
 ) -> None:
     """Update configuration from CLI arguments."""
     cfg = get_config()
@@ -129,3 +137,5 @@ def update_config_from_cli(
         cfg.port = port
     if timeout is not None:
         cfg.timeout = timeout
+    if stream is not None:
+        cfg.stream = stream

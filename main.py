@@ -15,7 +15,7 @@ from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, StreamingResponse
 
 from client import OpenAIClient
 from config import get_config, update_config_from_cli
@@ -90,8 +90,8 @@ async def generate_search_page(request: Request) -> HTMLResponse:
         return HTMLResponse(content=error_html, status_code=500)
 
 
-@app.get("/web/{domain}/{title:path}", response_class=HTMLResponse)
-async def web_page(domain: str, title: str, request: Request) -> HTMLResponse:
+@app.get("/web/{domain}/{title:path}")
+async def web_page(domain: str, title: str, request: Request):
     """
     Generate a web page for a specific domain and title.
     
@@ -101,13 +101,23 @@ async def web_page(domain: str, title: str, request: Request) -> HTMLResponse:
     - q: Query parameter containing the user's search query
     
     Returns a page matching the domain, title, and query.
+    If STREAM=true is set, the page loads progressively.
     """
     query = request.query_params.get("q", "")
+    cfg = get_config()
     
     try:
         async with OpenAIClient() as client:
-            html_content = await client.generate_web_page(domain, query, title)
-            return HTMLResponse(content=html_content, status_code=200)
+            if cfg.stream:
+                # Stream the response progressively
+                async def generate():
+                    async for chunk in client.stream_web_page(domain, query, title):
+                        yield chunk
+                return StreamingResponse(generate(), media_type="text/html")
+            else:
+                # Non-streaming: wait for complete response
+                html_content = await client.generate_web_page(domain, query, title)
+                return HTMLResponse(content=html_content, status_code=200)
     except Exception as e:
         logger.error(f"Failed to generate web page for domain={domain}, title={title}, q={query}: {e}")
         error_html = f"""
@@ -241,6 +251,11 @@ def parse_args() -> argparse.Namespace:
         type=float,
         help="Request timeout in seconds (overrides env/config)",
     )
+    parser.add_argument(
+        "--stream",
+        action="store_true",
+        help="Enable streaming responses for progressive page loading",
+    )
     return parser.parse_args()
 
 
@@ -255,6 +270,7 @@ if __name__ == "__main__":
         host=args.host,
         port=args.port,
         timeout=args.timeout,
+        stream=args.stream,
     )
     
     # Run the server
