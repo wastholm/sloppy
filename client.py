@@ -461,6 +461,7 @@ class OpenAIClient:
             "Generate a complete, simple search page HTML like Google or DuckDuckGo. "
             "The page should have:"
             " - A clean, minimal design with a centered search box"
+            " - A logo or doodle in inline SVG format"
             " - A title tag that includes the word 'Sloppy'"
             " - A GET form with action='/web' and method='GET'"
             " - Two submit buttons: one labeled 'Search' and one labeled "
