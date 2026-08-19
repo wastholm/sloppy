@@ -17,8 +17,9 @@ podman build -t sloppy .
 
 exec podman run --userns keep-id --network=host -p 8000:8000 \
   -e DEBUG="${DEBUG:-true}" \
-  -e MODEL_NAME="${MODEL_NAME:-llama3.1:latest}" \
+  -e MODEL_NAME="${MODEL_NAME:-gemma4:latest}" \
   -e OPENAI_BASE_URL="${OPENAI_BASE_URL:-http://localhost:11434/v1}" \
+  -e STREAM=true \
   -e TIMEOUT="${TIMEOUT:-120}" \
   "$@" \
   sloppy
